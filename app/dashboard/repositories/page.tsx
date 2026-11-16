@@ -130,8 +130,18 @@ const Page = async (props: PageProps) => {
                 </div>
               </div>
             </CardContent>
-            <CardFooter className="text-xs text-muted-foreground border-t pt-4 mt-auto">
-              Updated {new Date(repo.updated_at).toLocaleDateString()}
+            <CardFooter className="text-xs text-muted-foreground border-t pt-4 mt-auto flex items-center justify-between gap-2">
+              <span>
+                Updated {new Date(repo.updated_at).toLocaleDateString()}
+              </span>
+              <Link
+                href={`/dashboard/repositories/${repo.full_name.split("/")[0]}/${
+                  repo.full_name.split("/")[1]
+                }`}
+                className="text-primary hover:underline underline-offset-4"
+              >
+                Pull requests
+              </Link>
             </CardFooter>
           </Card>
         ))}

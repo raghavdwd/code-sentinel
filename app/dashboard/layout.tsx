@@ -9,10 +9,16 @@ import { Separator } from "@radix-ui/react-separator";
 import { requireAuth } from "@/modules/auth/utils/auth-utils";
 
 const DashboardLayout = async ({ children }: { children: React.ReactNode }) => {
-  await requireAuth();
+  const session = await requireAuth();
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <AppSidebar
+        user={{
+          name: session.user.name,
+          email: session.user.email,
+          image: session.user.image,
+        }}
+      />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />

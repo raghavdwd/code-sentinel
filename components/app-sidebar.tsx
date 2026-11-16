@@ -1,12 +1,12 @@
 "use client";
 import React from "react";
 import {
-  Github,
+  FolderGit,
   BookOpen,
   Settings,
-  Moon,
   Sun,
   LogOut,
+  ShieldCheck,
   User,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -31,42 +31,32 @@ import {
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import LogoutComponent from "@/modules/auth/components/logout";
-import { useState, useEffect } from "react";
 import { useSession } from "@/lib/auth-client";
 
-export const AppSidebar = () => {
+export const AppSidebar = ({
+  user: initialUser,
+}: {
+  user?: { name?: string | null; email?: string | null; image?: string | null };
+}) => {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const { data: session } = useSession();
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return null;
-  }
-
   const navigationItems = [
     { title: "Dashboard", url: "/dashboard", icon: BookOpen },
-    { title: "Repositories", url: "/dashboard/repositories", icon: Github },
-    { title: "Reviews", url: "/dashboard/reviews", icon: Moon },
-    { title: "Subscriptions", url: "/dashboard/subscriptions", icon: Sun },
-    { title: "Settings", url: "/settings", icon: Settings },
+    { title: "Repositories", url: "/dashboard/repositories", icon: FolderGit },
+    { title: "Reviews", url: "/dashboard/reviews", icon: ShieldCheck },
+    { title: "Settings", url: "/dashboard/settings", icon: Settings },
   ];
 
   const isActive = (url: string) => {
     return pathname === url || pathname.startsWith(url + "/");
   };
 
-  if (!session) {
-    return null;
-  }
-
-  const user = session.user;
-  const userName = user.name || "Guest";
-  const userEmail = user.email || "guest@example.com";
+  const sessionUser = session?.user;
+  const userName = sessionUser?.name || initialUser?.name || "Guest";
+  const userEmail = sessionUser?.email || initialUser?.email || "";
+  const userImage = sessionUser?.image || initialUser?.image || null;
 
   const userInitials = userName
     .split(" ")
@@ -125,7 +115,7 @@ export const AppSidebar = () => {
                   className="data-[active=true]:bg-sidebar-accent data-[state=open]:bg-sidebar-accent"
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.image || ""} alt={userName} />
+                    <AvatarImage src={userImage || ""} alt={userName} />
                     <AvatarFallback>{userInitials}</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
@@ -151,7 +141,7 @@ export const AppSidebar = () => {
                   </span>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/settings">
+                  <Link href="/dashboard/settings">
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
                   </Link>

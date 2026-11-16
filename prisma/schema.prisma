@@ -18,6 +18,68 @@ model Test {
   name String
 }
 
+model Repository {
+  id           Int           @id @default(autoincrement())
+  userId       String
+  owner        String
+  name         String
+  fullName     String
+  htmlUrl      String
+  description  String?
+  language     String?
+  stars        Int           @default(0)
+  private      Boolean       @default(false)
+  pullRequests PullRequest[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@unique([userId, fullName])
+  @@index([userId])
+}
+
+model PullRequest {
+  id           Int        @id @default(autoincrement())
+  userId       String
+  repositoryId Int
+  number       Int
+  title        String
+  body         String?
+  state        String
+  author       String
+  headSha      String
+  htmlUrl      String
+  additions    Int        @default(0)
+  deletions    Int        @default(0)
+  changedFiles Int        @default(0)
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([repositoryId, number])
+  @@index([userId])
+}
+
+model Review {
+  id           Int       @id @default(autoincrement())
+  userId       String
+  repoFullName String
+  prNumber     Int
+  prTitle      String
+  headSha      String
+  status       String    @default("pending")
+  model        String
+  summary      String?
+  findings     Json
+  skippedFiles Json
+  error        String?
+  postedAt     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId, repoFullName, prNumber])
+  @@index([userId, createdAt])
+}
+
 model User {
   id            String    @id
   name          String
