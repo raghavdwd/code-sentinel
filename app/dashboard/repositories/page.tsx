@@ -1,27 +1,9 @@
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { getGithubToken, getUserRepos } from "@/lib/github";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { Star, GitFork, Eye } from "lucide-react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { FolderGit } from "lucide-react";
+import { getGithubToken, getUserRepos } from "@/lib/github";
+import { languageColor } from "@/lib/ui";
+import { requireAuth } from "@/modules/auth/utils/auth-utils";
 
-// Define repository interface based on GitHub API response
 interface Repository {
   id: number;
   name: string;
@@ -30,159 +12,100 @@ interface Repository {
   html_url: string;
   stargazers_count: number;
   forks_count: number;
-  watchers_count: number;
   language: string | null;
   updated_at: string;
 }
 
-interface PageProps {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}
-
-const Page = async (props: PageProps) => {
-  const searchParams = await props.searchParams;
-  const page = Number(searchParams.page) || 1;
-  const perPage = 9; // Display 9 repos per page (3x3 grid)
-
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session) {
-    return (
-      <div className="flex items-center justify-center h-[50vh]">
-        <p className="text-muted-foreground">
-          Please log in to view repositories.
-        </p>
-      </div>
-    );
-  }
-
+export default async function RepositoriesPage() {
+  const session = await requireAuth();
   const token = await getGithubToken(session.user.id);
 
   if (!token) {
     return (
-      <div className="flex flex-col items-center justify-center h-[50vh] gap-4">
-        <p className="text-muted-foreground">
-          No GitHub account connected found.
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Please connect your GitHub account in settings.
-        </p>
+      <div className="mx-auto max-w-[1204px] p-6">
+        <h1 className="text-[22px] font-semibold">Repositories</h1>
+        <div className="mt-6 rounded-lg border p-6">
+          <p className="text-[14px]">
+            Connect GitHub to see the repositories Sentinel can review.
+          </p>
+          <Link
+            href="/dashboard/settings"
+            className="mt-4 inline-flex h-9 items-center rounded-md bg-primary px-4 text-[14px] font-medium text-primary-foreground"
+          >
+            Connect GitHub
+          </Link>
+        </div>
       </div>
     );
   }
 
-  const repos: Repository[] = await getUserRepos(token, page, perPage);
-
-  // Simple check for next page availability (if we got full page, assume there might be more)
-  const hasNextPage = repos.length === perPage;
-  const hasPrevPage = page > 1;
+  const repos: Repository[] = await getUserRepos(token, 1, 50);
 
   return (
-    <div className="space-y-6 container mx-auto p-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Repositories</h1>
-        <p className="text-muted-foreground">
-          Manage and view your GitHub repositories.
-        </p>
+    <div className="mx-auto max-w-[1204px] p-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-[22px] font-semibold tracking-tight">
+            Repositories
+          </h1>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            {repos.length} repositories Sentinel can read pull requests from.
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {repos.map((repo) => (
-          <Card
-            key={repo.id}
-            className="flex flex-col h-full hover:shadow-lg transition-shadow"
-          >
-            <CardHeader>
-              <div className="flex justify-between items-start gap-2">
-                <CardTitle className="text-xl break-all">
-                  <Link
-                    href={repo.html_url}
-                    target="_blank"
-                    className="hover:underline hover:text-primary"
-                  >
-                    {repo.name}
-                  </Link>
-                </CardTitle>
-              </div>
-              <CardDescription className="line-clamp-2 min-h-[2.5rem]">
-                {repo.description || "No description available"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1">
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                {repo.language && (
-                  <div className="flex items-center gap-1">
-                    <span className="w-3 h-3 rounded-full bg-primary/80"></span>
-                    {repo.language}
-                  </div>
-                )}
-                <div className="flex items-center gap-4 ml-auto">
-                  <div className="flex items-center gap-1" title="Stars">
-                    <Star className="w-4 h-4" />
-                    {repo.stargazers_count}
-                  </div>
-                  <div className="flex items-center gap-1" title="Forks">
-                    <GitFork className="w-4 h-4" />
-                    {repo.forks_count}
+      <section className="mt-6 overflow-hidden rounded-lg border">
+        <div className="hidden grid-cols-[minmax(0,1fr)_120px_90px_120px] items-center gap-4 px-4 py-2 text-[12px] text-muted-foreground md:grid">
+          <span>Repository</span>
+          <span>Language</span>
+          <span className="text-right">Stars</span>
+          <span className="text-right">Updated</span>
+        </div>
+        <ul className="divide-y divide-border border-t border-border">
+          {repos.map((repo) => {
+            const [owner, name] = repo.full_name.split("/");
+            return (
+              <li
+                key={repo.id}
+                className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 md:grid md:grid-cols-[minmax(0,1fr)_120px_90px_120px] md:items-center md:gap-4"
+              >
+                <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                  <FolderGit className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0">
+                    <Link
+                      href={`/dashboard/repositories/${owner}/${name}`}
+                      className="block truncate text-[14px] font-medium hover:underline"
+                    >
+                      {repo.full_name}
+                    </Link>
+                    <p className="truncate text-[12px] text-muted-foreground">
+                      {repo.description || "No description"}
+                    </p>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-            <CardFooter className="text-xs text-muted-foreground border-t pt-4 mt-auto flex items-center justify-between gap-2">
-              <span>
-                Updated {new Date(repo.updated_at).toLocaleDateString()}
-              </span>
-              <Link
-                href={`/dashboard/repositories/${repo.full_name.split("/")[0]}/${
-                  repo.full_name.split("/")[1]
-                }`}
-                className="text-primary hover:underline underline-offset-4"
-              >
-                Pull requests
-              </Link>
-            </CardFooter>
-          </Card>
-        ))}
-        {repos.length === 0 && (
-          <div className="col-span-full text-center py-12 text-muted-foreground">
-            No repositories found.
-          </div>
-        )}
-      </div>
-
-      <div className="mt-8">
-        <Pagination>
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                href={
-                  hasPrevPage ? `/dashboard/repositories?page=${page - 1}` : "#"
-                }
-                aria-disabled={!hasPrevPage}
-                className={!hasPrevPage ? "pointer-events-none opacity-50" : ""}
-              />
-            </PaginationItem>
-
-            <PaginationItem>
-              <PaginationLink isActive>{page}</PaginationLink>
-            </PaginationItem>
-
-            <PaginationItem>
-              <PaginationNext
-                href={
-                  hasNextPage ? `/dashboard/repositories?page=${page + 1}` : "#"
-                }
-                aria-disabled={!hasNextPage}
-                className={!hasNextPage ? "pointer-events-none opacity-50" : ""}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      </div>
+                <span className="hidden items-center gap-1.5 truncate text-[13px] text-muted-foreground md:flex">
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: languageColor(repo.language) }}
+                  />
+                  {repo.language || "—"}
+                </span>
+                <span className="tnum text-[13px] md:text-right">
+                  {repo.stargazers_count.toLocaleString()}
+                </span>
+                <span className="tnum hidden text-[13px] text-muted-foreground md:block md:text-right">
+                  {new Date(repo.updated_at).toLocaleDateString()}
+                </span>
+              </li>
+            );
+          })}
+          {repos.length === 0 && (
+            <li className="px-4 py-8 text-center text-[13px] text-muted-foreground">
+              No repositories found.
+            </li>
+          )}
+        </ul>
+      </section>
     </div>
   );
-};
-
-export default Page;
+}

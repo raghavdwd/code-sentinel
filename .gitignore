@@ -12,7 +12,7 @@
 
 # testing
 /coverage
-
+.taste-skill/
 # next.js
 /.next/
 /out/

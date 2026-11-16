@@ -1,33 +1,28 @@
 import React from "react";
-import {
-  SidebarProvider,
-  SidebarInset,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
-import { Separator } from "@radix-ui/react-separator";
+import { AppSidebar, MobileNav } from "@/components/app-sidebar";
 import { requireAuth } from "@/modules/auth/utils/auth-utils";
 
 const DashboardLayout = async ({ children }: { children: React.ReactNode }) => {
   const session = await requireAuth();
+  const user = {
+    name: session.user.name,
+    email: session.user.email,
+    image: session.user.image,
+  };
+
   return (
-    <SidebarProvider>
-      <AppSidebar
-        user={{
-          name: session.user.name,
-          email: session.user.email,
-          image: session.user.image,
-        }}
-      />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mx-2 h-4" />
-          <h1 className="text-xl font-semibold text-foreground">Dashboard</h1>
+    <div className="flex min-h-dvh bg-background">
+      <AppSidebar user={user} />
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background px-3 md:hidden">
+          <MobileNav user={user} />
+          <span className="text-[14px] font-semibold">Code Sentinel</span>
         </header>
-        <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
-      </SidebarInset>
-    </SidebarProvider>
+
+        <main className="min-h-0 flex-1 bg-card">{children}</main>
+      </div>
+    </div>
   );
 };
 
