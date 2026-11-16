@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import prisma from "@/lib/db";
 import { createPullRequestReview, getGithubToken } from "@/lib/github";
 import { buildReviewComment, runReview } from "@/lib/review";
@@ -50,6 +51,35 @@ export const runReviewAction = async (
   revalidatePath(`/dashboard/repositories/${owner}/${repo}/pulls/${number}`);
   revalidatePath("/dashboard/reviews");
   return {};
+};
+
+export const reviewPullRequestAction = async (
+  _prev: ReviewActionState,
+  formData: FormData
+): Promise<ReviewActionState> => {
+  const session = await requireAuth();
+  const token = await getGithubToken(session.user.id);
+  if (!token) {
+    redirect("/dashboard/settings");
+  }
+
+  const owner = String(formData.get("owner"));
+  const repo = String(formData.get("repo"));
+  const number = Number(formData.get("number"));
+
+  try {
+    await runReview({
+      userId: session.user.id,
+      token,
+      owner,
+      repo,
+      number,
+    });
+  } catch {
+    // The failed run is stored on the review row and shown on the pull request page.
+  }
+
+  redirect(`/dashboard/repositories/${owner}/${repo}/pulls/${number}`);
 };
 
 export const postReviewAction = async (

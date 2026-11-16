@@ -46,9 +46,10 @@ export interface GithubPullRequest {
   body: string | null;
   state: string;
   html_url: string;
-  additions: number;
-  deletions: number;
-  changed_files: number;
+  // Only present on the single pull request endpoint, not on the list endpoint.
+  additions?: number;
+  deletions?: number;
+  changed_files?: number;
   created_at: string;
   updated_at: string;
   user: { login: string };
@@ -95,6 +96,42 @@ export const getRepoPullRequests = async (
   });
 
   return response.data;
+};
+
+export interface OpenPullRequest extends GithubPullRequest {
+  owner: string;
+  repo: string;
+  fullName: string;
+  language: string | null;
+}
+
+export const getOpenPullRequestsAcrossRepos = async (
+  accessToken: string,
+  repoLimit = 12
+): Promise<OpenPullRequest[]> => {
+  const repos = await getUserRepos(accessToken, 1, repoLimit);
+
+  const perRepo = await Promise.all(
+    repos.map(
+      async (repo: { full_name: string; language: string | null }) => {
+        const [owner, name] = repo.full_name.split("/");
+        try {
+          const prs = await getRepoPullRequests(accessToken, owner, name, "open");
+          return prs.map((pr) => ({
+            ...pr,
+            owner,
+            repo: name,
+            fullName: repo.full_name,
+            language: repo.language,
+          }));
+        } catch {
+          return [];
+        }
+      }
+    )
+  );
+
+  return perRepo.flat();
 };
 
 export const getPullRequest = async (

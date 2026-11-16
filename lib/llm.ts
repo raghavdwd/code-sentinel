@@ -27,13 +27,26 @@ Reply with ONLY a JSON object, no prose and no markdown fences, in exactly this 
 {"summary":"overall assessment in at most 3 sentences","findings":[{"severity":"critical|high|medium|low","file":"path relative to repo root","line":123,"title":"short title","description":"what is wrong and why it matters","suggestedFix":"concrete fix or null"}]}
 Report at most 15 findings, most severe first. If the diff has no real defects, return an empty findings array.`;
 
-const client = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.OPENROUTER_API_KEY || "",
-});
+// Created lazily: the SDK throws when it is constructed without a key, and a
+// build without OPENROUTER_API_KEY must not fail at module load.
+let client: OpenAI | null = null;
+
+const getClient = () => {
+  if (!client) {
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+      throw new Error("OPENROUTER_API_KEY is not set");
+    }
+    client = new OpenAI({
+      baseURL: "https://openrouter.ai/api/v1",
+      apiKey,
+    });
+  }
+  return client;
+};
 
 export const callReviewModel = async (userPrompt: string): Promise<string> => {
-  const completion = await client.chat.completions.create({
+  const completion = await getClient().chat.completions.create({
     model: REVIEW_MODEL,
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
@@ -44,10 +57,34 @@ export const callReviewModel = async (userPrompt: string): Promise<string> => {
   return completion.choices[0]?.message?.content || "";
 };
 
+export const getOpenRouterUsage = async () => {
+  const key = process.env.OPENROUTER_API_KEY;
+  if (!key) return null;
+
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/key", {
+      headers: { Authorization: `Bearer ${key}` },
+      cache: "no-store",
+    });
+    if (!response.ok) return null;
+
+    const payload = await response.json();
+    const free = payload?.data?.free_model_daily_requests;
+
+    return {
+      used: free?.used ?? null,
+      limit: free?.limit ?? null,
+      remaining: free?.remaining ?? null,
+      creditsRemaining: payload?.data?.limit_remaining ?? null,
+    };
+  } catch {
+    return null;
+  }
+};
+
 // Free models drift from the requested shape, so parse defensively and keep the
 // raw text when it is not usable.
-export const parseReview = (raw: string): ReviewResult | null => {
-  const withoutFences = raw
+export const parseReview = (raw: string): ReviewResult | null => {  const withoutFences = raw
     .trim()
     .replace(/^```(?:json)?/i, "")
     .replace(/```$/, "")

@@ -1,17 +1,26 @@
+import { Cpu, KeyRound, Lock, Plug } from "lucide-react";
 import { getGithubToken, getGithubUser } from "@/lib/github";
-import { REVIEW_MODEL } from "@/lib/llm";
+import { getOpenRouterUsage, REVIEW_MODEL } from "@/lib/llm";
 import { requireAuth } from "@/modules/auth/utils/auth-utils";
 import { ReconnectGithubButton } from "@/modules/auth/components/reconnect-github";
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 
-const Page = async () => {
+const Row = ({
+  icon: Icon,
+  label,
+  children,
+}: {
+  icon: typeof Plug;
+  label: string;
+  children: React.ReactNode;
+}) => (
+  <div className="flex items-center gap-3 px-4 py-3">
+    <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+    <span className="w-40 shrink-0 text-[13px] text-muted-foreground">{label}</span>
+    <div className="min-w-0 flex-1 text-[13px]">{children}</div>
+  </div>
+);
+
+export default async function SettingsPage() {
   const session = await requireAuth();
   const token = await getGithubToken(session.user.id);
 
@@ -25,63 +34,88 @@ const Page = async () => {
     }
   }
 
+  const usage = await getOpenRouterUsage();
+
   return (
-    <div className="space-y-6 container mx-auto p-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">
-          Connections used by Code Sentinel.
+    <div className="mx-auto max-w-[900px] p-6">
+      <div>
+        <h1 className="text-[22px] font-semibold tracking-tight">Settings</h1>
+        <p className="mt-1 text-[13px] text-muted-foreground">
+          The connections Code Sentinel reviews with.
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>GitHub</CardTitle>
-          <CardDescription>
-            Reviews run with your GitHub token, so Sentinel can read pull
-            requests and post review comments.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      <section className="mt-6 overflow-hidden rounded-lg border">
+        <header className="border-b border-border px-4 py-3">
+          <h2 className="text-[16px] font-medium">GitHub</h2>
+        </header>
+        <Row icon={Plug} label="Account">
           {github ? (
-            <div className="space-y-2 text-sm">
-              <p>
-                Connected as{" "}
-                <span className="font-medium">{github.login}</span>
-              </p>
-              <p className="text-muted-foreground">
-                Scopes: {github.scopes || "none reported"}
-              </p>
-            </div>
+            <span className="font-medium">{github.login}</span>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              {githubError || "No GitHub account connected."}
-            </p>
+            <span className="text-muted-foreground">
+              {githubError || "Not connected"}
+            </span>
           )}
+        </Row>
+        <div className="border-t border-border">
+          <Row icon={KeyRound} label="Scopes">
+            {github?.scopes ? (
+              <span className="font-mono text-[12px]">{github.scopes}</span>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+          </Row>
+        </div>
+        <div className="border-t border-border px-4 py-3">
           <ReconnectGithubButton />
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Review model</CardTitle>
-          <CardDescription>
-            The model that produces review findings.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <p>
-            Model: <Badge variant="secondary">{REVIEW_MODEL}</Badge>
-          </p>
-          <p className="text-muted-foreground">
-            {process.env.OPENROUTER_API_KEY
-              ? "OpenRouter API key configured."
-              : "OpenRouter API key missing. Set OPENROUTER_API_KEY in .env before running a review."}
-          </p>
-        </CardContent>
-      </Card>
+      <section className="mt-6 overflow-hidden rounded-lg border">
+        <header className="border-b border-border px-4 py-3">
+          <h2 className="text-[16px] font-medium">Review model</h2>
+        </header>
+        <Row icon={Cpu} label="Model">
+          <span className="pill pill-brand">{REVIEW_MODEL}</span>
+        </Row>
+        <div className="border-t border-border">
+          <Row icon={Lock} label="API key">
+            {process.env.OPENROUTER_API_KEY ? (
+              <span className="text-emerald-700 dark:text-emerald-500">
+                Configured
+              </span>
+            ) : (
+              <span className="text-severity-critical">
+                Missing — set OPENROUTER_API_KEY in .env
+              </span>
+            )}
+          </Row>
+        </div>
+        {usage?.limit ? (
+          <div className="border-t border-border px-4 py-3">
+            <div className="flex items-baseline justify-between">
+              <span className="text-[13px] text-muted-foreground">
+                Free-model requests left today
+              </span>
+              <span className="tnum text-[13px]">
+                {usage.remaining} of {usage.limit}
+              </span>
+            </div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+              <span
+                className="block h-full rounded-full bg-brand"
+                style={{
+                  width: `${Math.max(
+                    0,
+                    Math.min(100, ((usage.limit - (usage.remaining ?? 0)) / usage.limit) * 100)
+                  )}%`,
+                }}
+              />
+            </div>
+          </div>
+        ) : null}
+      </section>
     </div>
   );
-};
-
-export default Page;
+}
