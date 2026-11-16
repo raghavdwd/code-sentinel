@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "bun --bun next dev",
+    "dev": "prisma generate && bun --bun next dev",
     "build": "prisma generate && prisma migrate deploy && bun --bun next build",
     "start": "bun --bun next start",
     "postinstall": "prisma generate",
