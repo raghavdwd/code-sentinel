@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "bun --bun next dev",
-    "build": "bun --bun next build",
+    "build": "prisma generate && prisma migrate deploy && bun --bun next build",
     "start": "bun --bun next start",
+    "postinstall": "prisma generate",
     "lint": "eslint",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
